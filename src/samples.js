@@ -8,7 +8,7 @@ export const SAMPLES = [
   },
   {
     title: 'REST for public APIs',
-    statement: 'Public APIs are REST with OpenAPI specs. We will not use GraphQL for external endpoints.',
+    statement: 'Public APIs are REST with OpenAPI specs. For external endpoints we will not use GraphQL.',
     rationale: 'Partners asked for generated clients, and our gateway rate limits per route.',
     tags: ['api'],
   },
@@ -26,7 +26,7 @@ export const SAMPLES = [
   },
   {
     title: 'Support the last two major browser versions',
-    statement: 'We support the last two major versions of Chrome, Firefox, Safari and Edge, and we will not support Internet Explorer.',
+    statement: 'The last two major versions of Chrome, Firefox, Safari and Edge are supported. Internet Explorer is out of scope.',
     rationale: 'Under 0.3% of sessions come from anything older.',
     tags: ['frontend'],
   },

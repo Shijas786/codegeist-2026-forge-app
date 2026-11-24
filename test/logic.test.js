@@ -74,3 +74,11 @@ test('a marker line that ends with a dash still starts a new decision', () => {
   const d = parseExplicitDecision('DECISION: We keep Postgres for sessions\nDECISION -\nWe drop the Redis cluster');
   assert.equal(d.statement, 'We keep Postgres for sessions');
 });
+
+test('example decisions only rule out the technologies they name', async () => {
+  const { SAMPLES } = await import('../src/samples.js');
+  assert.deepEqual(SAMPLES.flatMap((s) => bannedTerms(s.statement)), ['redi', 'graphql']);
+  const rest = { ...SAMPLES[1], status: 'active' };
+  assert.equal(findConflict(rest, 'Add an external REST endpoint for partners'), null);
+  assert.ok(findConflict(rest, 'Add a GraphQL endpoint for partners'));
+});
