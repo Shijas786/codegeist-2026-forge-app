@@ -90,7 +90,7 @@ export async function getUserName(accountId, as = 'app') {
 export async function visibleProjectKeys(as = 'user') {
   const keys = new Set();
   let startAt = 0;
-  for (let page = 0; page < 10; page += 1) {
+  for (;;) {
     const res = await request(as, route`/rest/api/3/project/search?startAt=${startAt}&maxResults=100`);
     if (!res.ok) break;
     const data = await res.json();
