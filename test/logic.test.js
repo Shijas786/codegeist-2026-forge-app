@@ -69,3 +69,8 @@ test('a statement that starts with an ADR reference is kept', () => {
   assert.equal(d.statement, 'ADR-123 stands, we keep Postgres for sessions');
   assert.equal(parseExplicitDecision('ADR-123 is worth a read before the meeting'), null);
 });
+
+test('a marker line that ends with a dash still starts a new decision', () => {
+  const d = parseExplicitDecision('DECISION: We keep Postgres for sessions\nDECISION -\nWe drop the Redis cluster');
+  assert.equal(d.statement, 'We keep Postgres for sessions');
+});

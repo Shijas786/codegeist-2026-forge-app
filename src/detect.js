@@ -1,7 +1,7 @@
 // Finds decisions in free text: explicit markers ("DECISION: ...") and decision language ("we agreed to ...").
 import { truncate } from './text.js';
 
-const MARKER = /^[ \t]*(?:\/decision|decision|decided|adr)[ \t]*(?::|[\-–](?=\s))[ \t]*/im;
+const MARKER = /^[ \t]*(?:\/decision|decision|decided|adr)[ \t]*(?::|[\-–](?=\s|$))[ \t]*/im;
 const RATIONALE = /^[ \t]*(?:why|because|rationale|reason)[ \t]*[:\-–][ \t]*/i;
 
 // A dash only counts as a marker separator before whitespace, so "ADR-123" is a reference, not a marker.
