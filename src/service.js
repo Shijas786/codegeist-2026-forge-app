@@ -32,6 +32,9 @@ export async function visibleDecisions(filter, as = 'user') {
   return decisions.filter((d) => !d.projectKey || keys.has(d.projectKey));
 }
 
+// Example decisions are fiction: they only ever apply inside the project they were loaded into.
+const inScope = (decisions, projectKey) => decisions.filter((d) => d.capturedVia !== 'sample' || d.projectKey === projectKey);
+
 export async function canSeeDecision(d, as = 'user') {
   return !!d && (!d.projectKey || (await jira.visibleProjectKeys(as)).has(d.projectKey));
 }
@@ -77,13 +80,13 @@ export async function decisionsForIssue(issueKey, { cloudId, as = 'user', withGr
     withGraph && cloudId ? graph.getIssueContext(cloudId, issue.id) : Promise.resolve(null),
   ]);
   const graphText = context ? [...context.goals.map((g) => g.name), ...context.pullRequests.map((p) => p.title)].join('\n') : '';
-  const ranked = rankDecisions({ ...issue, text: `${issue.text}\n${graphText}` }, decisions);
+  const ranked = rankDecisions({ ...issue, text: `${issue.text}\n${graphText}` }, inScope(decisions, issue.projectKey));
   return { issue, context, matches: ranked };
 }
 
 // Check a proposal (free text) against the ledger before work starts.
 export async function checkProposal(text, projectKey) {
-  const decisions = await visibleDecisions();
+  const decisions = inScope(await visibleDecisions(), projectKey);
   const pool = projectKey ? decisions.filter((d) => !d.projectKey || d.projectKey === projectKey) : decisions;
   const ranked = rankDecisions({ key: null, text }, pool, { minScore: 8, limit: 8 });
   return {
