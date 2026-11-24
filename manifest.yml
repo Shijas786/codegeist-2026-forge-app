@@ -6,7 +6,7 @@ modules:
         function: resolver
       render: native
       title: Precedent
-      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+      icon: resource:brand;icon.svg
   jira:projectPage:
     - key: precedent-decision-log
       resource: decision-log
@@ -169,6 +169,8 @@ resources:
     path: src/frontend/panel.jsx
   - key: decision-log
     path: src/frontend/log.jsx
+  - key: brand
+    path: resources/brand
   - key: agent-resources
     path: resources/agent
 permissions:

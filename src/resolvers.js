@@ -3,6 +3,7 @@ import * as service from './service.js';
 import * as store from './store.js';
 import * as graph from './graph.js';
 import * as jira from './jira.js';
+import { SAMPLES } from './samples.js';
 
 const resolver = new Resolver();
 
@@ -79,6 +80,17 @@ resolver.define('dismissCandidate', async (req) => store.dismissCandidate(req.pa
 resolver.define('overview', async (req) => {
   const project = ext(req).project;
   return service.projectOverview({ projectKey: project.key, projectId: project.id, cloudId: req.context.cloudId });
+});
+
+// Fills an empty project ledger with example decisions so a new install has something to try.
+resolver.define('loadSamples', async (req) => {
+  const projectKey = ext(req).project.key;
+  if (!(await jira.visibleProjectKeys()).has(projectKey)) return DENIED;
+  if ((await store.listDecisions({ projectKey })).length) return { error: 'This project already has decisions.' };
+  for (const s of SAMPLES) {
+    await service.recordDecision({ ...s, tags: [...s.tags, 'sample'], projectKey, decidedBy: req.context.accountId, capturedVia: 'sample' });
+  }
+  return { loaded: SAMPLES.length };
 });
 
 resolver.define('scan', async (req) => {

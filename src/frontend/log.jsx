@@ -160,6 +160,9 @@ function Log() {
                 <EmptyState
                   header={results ? 'Nothing matches that search' : 'No decisions recorded yet'}
                   description='Record one here, start a Jira comment with "DECISION:", or ask the Precedent agent in Rovo.'
+                  primaryAction={results ? undefined : (
+                    <Button isLoading={busy === 'loadSamples'} onClick={() => act('loadSamples', {}, 'Loaded five example decisions. Open "Check a plan" and try "Add Redis to cache sessions".')}>Load example decisions</Button>
+                  )}
                 />
               )}
               {stats.byMonth.length > 1 && (
