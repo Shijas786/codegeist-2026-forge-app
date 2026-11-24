@@ -110,10 +110,9 @@ export function rankDecisions(work, decisions, { minScore = 12, limit = 10 } = {
     return { decision: d, score: Math.min(100, score), reasons, conflict };
   });
 
-  return ranked
-    .filter((r) => r.score >= minScore)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+  // Contradictions are never cut by the limit: hiding one would read as "nothing conflicts".
+  const kept = ranked.filter((r) => r.score >= minScore || r.conflict).sort((a, b) => b.score - a.score);
+  return [...kept.filter((r) => r.conflict), ...kept.filter((r) => !r.conflict).slice(0, limit)].sort((a, b) => b.score - a.score);
 }
 
 export function searchDecisions(query, decisions, limit = 10) {

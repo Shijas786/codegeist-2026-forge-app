@@ -25,11 +25,28 @@ export function summarize(d) {
   };
 }
 
+// Decisions the caller may see: those without a project, or from a project they can browse.
+export async function visibleDecisions(filter, as = 'user') {
+  const [decisions, keys] = await Promise.all([store.listDecisions(filter), jira.visibleProjectKeys(as)]);
+  return decisions.filter((d) => !d.projectKey || keys.has(d.projectKey));
+}
+
+export async function canSeeDecision(d, as = 'user') {
+  return !!d && (!d.projectKey || (await jira.visibleProjectKeys(as)).has(d.projectKey));
+}
+
 export async function recordDecision(input, as = 'user') {
   const statement = String(input.statement || '').trim();
   if (statement.length < 8) return { error: 'A decision needs a statement of at least 8 characters.' };
   let issue = null;
-  if (input.issueKey) issue = await jira.getIssue(String(input.issueKey).toUpperCase(), as);
+  if (input.issueKey) {
+    issue = await jira.getIssue(String(input.issueKey).toUpperCase(), as);
+    if (!issue) return { error: `Issue ${input.issueKey} was not found or is not visible.` };
+  }
+  const supersedes = input.supersedes ? String(input.supersedes).trim().toUpperCase() : null;
+  if (supersedes && !(await canSeeDecision(await store.getDecision(supersedes), as))) {
+    return { error: `Decision ${supersedes} does not exist, so it cannot be replaced.` };
+  }
   const decidedByName = input.decidedByName || (await jira.getUserName(input.decidedBy, as));
   const decision = await store.createDecision({
     title: (input.title && String(input.title).trim()) || titleFromStatement(statement),
@@ -44,7 +61,7 @@ export async function recordDecision(input, as = 'user') {
     decidedByName,
     capturedVia: input.capturedVia,
     decidedAt: input.decidedAt,
-    supersedes: input.supersedes ? String(input.supersedes).toUpperCase() : null,
+    supersedes,
   });
   return { decision };
 }
@@ -54,7 +71,7 @@ export async function decisionsForIssue(issueKey, { cloudId, as = 'user', withGr
   const issue = await jira.getIssue(String(issueKey).toUpperCase(), as);
   if (!issue) return { error: `Issue ${issueKey} was not found or is not visible.` };
   const [decisions, context] = await Promise.all([
-    store.listDecisions(),
+    visibleDecisions({}, as),
     withGraph && cloudId ? graph.getIssueContext(cloudId, issue.id) : Promise.resolve(null),
   ]);
   const graphText = context ? [...context.goals.map((g) => g.name), ...context.pullRequests.map((p) => p.title)].join('\n') : '';
@@ -64,7 +81,7 @@ export async function decisionsForIssue(issueKey, { cloudId, as = 'user', withGr
 
 // Check a proposal (free text) against the ledger before work starts.
 export async function checkProposal(text, projectKey) {
-  const decisions = await store.listDecisions();
+  const decisions = await visibleDecisions();
   const pool = projectKey ? decisions.filter((d) => !d.projectKey || d.projectKey === projectKey) : decisions;
   const ranked = rankDecisions({ key: null, text }, pool, { minScore: 8, limit: 8 });
   return {
@@ -74,7 +91,7 @@ export async function checkProposal(text, projectKey) {
 }
 
 export async function search(query, { projectKey, status } = {}) {
-  const decisions = await store.listDecisions({ projectKey, status });
+  const decisions = await visibleDecisions({ projectKey, status });
   return searchDecisions(query, decisions, 15);
 }
 
@@ -82,7 +99,8 @@ export async function search(query, { projectKey, status } = {}) {
 export async function handleComment({ issueKey, commentId }) {
   const settings = await store.getSettings();
   const comment = await jira.getComment(issueKey, commentId, 'app');
-  if (!comment || comment.authorType === 'app') return { skipped: true };
+  // Restricted comments are never captured: the ledger and the acknowledgement would be visible more widely.
+  if (!comment || comment.authorType === 'app' || comment.restricted) return { skipped: true };
   const explicit = parseExplicitDecision(comment.text);
   if (explicit && settings.autoCapture) {
     const { decision } = await recordDecision(
@@ -122,7 +140,7 @@ export async function scanProject({ cloudId, projectKey, projectId, since = 'P30
 
   const consider = async (issueKey, c) => {
     scannedComments += 1;
-    if (!c.text || recorded.has(`${issueKey}:${c.id}`) || parseExplicitDecision(c.text)) return;
+    if (!c.text || c.restricted || recorded.has(`${issueKey}:${c.id}`) || parseExplicitDecision(c.text)) return;
     const guess = detectDecisionLanguage(c.text);
     if (!guess) return;
     const saved = await store.saveCandidate({

@@ -1,8 +1,22 @@
 // Finds decisions in free text: explicit markers ("DECISION: ...") and decision language ("we agreed to ...").
 import { truncate } from './text.js';
 
-const MARKER = /^\s*(?:\/decision|decision|decided|adr)\s*[:\-–]\s*(.+)$/im;
-const RATIONALE = /^\s*(?:why|because|rationale|reason)\s*[:\-–]\s*(.+)$/im;
+const MARKER = /^[ \t]*(?:\/decision|decision|decided|adr)[ \t]*[:\-–][ \t]*/im;
+const RATIONALE = /^[ \t]*(?:why|because|rationale|reason)[ \t]*[:\-–][ \t]*/i;
+
+// Text after a marker up to the next blank line or the next marker line; continuation lines are joined.
+function block(text, re) {
+  const m = re.exec(text);
+  if (!m) return null;
+  const lines = [];
+  for (const line of text.slice(m.index + m[0].length).split('\n')) {
+    if (lines.length && !line.trim()) break;
+    if (RATIONALE.test(line) || MARKER.test(line)) break;
+    if (line.trim()) lines.push(line.trim());
+    else if (!lines.length && lines.push('') > 3) break;
+  }
+  return lines.filter(Boolean).join(' ');
+}
 
 const PHRASES = [
   [/\bwe(?:'ve| have)? (?:decided|agreed|chosen|settled)\b/i, 0.9],
@@ -16,12 +30,10 @@ const PHRASES = [
 ];
 
 export function parseExplicitDecision(text) {
-  const m = MARKER.exec(text || '');
-  if (!m) return null;
-  const statement = m[1].trim();
-  if (statement.length < 8) return null;
-  const r = RATIONALE.exec(text);
-  return { statement, rationale: r ? r[1].trim() : '' };
+  const body = String(text || '').replace(/\r/g, '');
+  const statement = block(body, MARKER);
+  if (!statement || statement.length < 8) return null;
+  return { statement, rationale: block(body, new RegExp(RATIONALE.source, 'im')) || '' };
 }
 
 // Returns { confidence 0..1, statement } for the sentence that most looks like a decision, or null.

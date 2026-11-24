@@ -21,7 +21,7 @@ async function listByPrefix(prefix) {
 export async function listDecisions({ projectKey, status } = {}) {
   const all = await listByPrefix(DECISION);
   return all
-    .filter((d) => (!projectKey || d.projectKey === projectKey) && (!status || d.status === status))
+    .filter((d) => !d.reserved && (!projectKey || d.projectKey === projectKey) && (!status || d.status === status))
     .sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : -1));
 }
 
@@ -29,14 +29,23 @@ export async function getDecision(id) {
   return kvs.get(DECISION + String(id).toUpperCase());
 }
 
-async function nextId() {
-  const n = ((await kvs.get(COUNTER)) || 0) + 1;
-  await kvs.set(COUNTER, n);
-  return `D-${n}`;
+// Reserve the next free id. FAIL_IF_EXISTS makes the claim atomic, so two overlapping captures cannot share an id.
+async function reserveId() {
+  let n = ((await kvs.get(COUNTER)) || 0) + 1;
+  for (let attempt = 0; attempt < 50; attempt += 1, n += 1) {
+    try {
+      await kvs.set(`${DECISION}D-${n}`, { id: `D-${n}`, reserved: true }, { keyPolicy: 'FAIL_IF_EXISTS' });
+      await kvs.set(COUNTER, n);
+      return `D-${n}`;
+    } catch (e) {
+      // taken by a concurrent writer: try the next number
+    }
+  }
+  throw new Error('Could not reserve a decision id');
 }
 
 export async function createDecision(input) {
-  const id = await nextId();
+  const id = await reserveId();
   const now = new Date().toISOString();
   const decision = {
     id,

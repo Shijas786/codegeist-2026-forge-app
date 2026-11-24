@@ -1,5 +1,5 @@
-// Thin Jira REST helpers. `as` is 'user' or 'app'; user calls fall back to the app when no user session exists
-// (for example a tool call arriving through MCP or an automation rule).
+// Thin Jira REST helpers. `as` is 'user' or 'app'. A user call is answered by the app only when there is no user
+// session at all (a tool call through MCP or an automation rule), never when Jira refused the user.
 import api, { route } from '@forge/api';
 import { adfToText } from './text.js';
 
@@ -7,12 +7,14 @@ async function request(as, path, options) {
   const headers = { Accept: 'application/json', 'Content-Type': 'application/json' };
   const opts = { ...options, headers };
   if (as === 'user') {
+    let res;
     try {
-      const res = await api.asUser().requestJira(path, opts);
-      if (res.status !== 401 && res.status !== 403) return res;
+      res = await api.asUser().requestJira(path, opts);
     } catch (e) {
-      // no user context: fall through to the app
+      // No user session at all (an MCP or automation call): the app answers.
+      return api.asApp().requestJira(path, opts);
     }
+    return res; // a 401/403 for the user stays a refusal
   }
   return api.asApp().requestJira(path, opts);
 }
@@ -51,14 +53,14 @@ export async function getComment(issueKey, commentId, as = 'app') {
   const res = await request(as, route`/rest/api/3/issue/${issueKey}/comment/${commentId}`);
   if (!res.ok) return null;
   const c = await res.json();
-  return { id: c.id, text: adfToText(c.body), authorId: c.author?.accountId, authorName: c.author?.displayName, authorType: c.author?.accountType, created: c.created };
+  return { id: c.id, text: adfToText(c.body), authorId: c.author?.accountId, authorName: c.author?.displayName, authorType: c.author?.accountType, created: c.created, restricted: !!c.visibility };
 }
 
 export async function getComments(issueKey, as = 'user', max = 50) {
   const res = await request(as, route`/rest/api/3/issue/${issueKey}/comment?maxResults=${max}&orderBy=-created`);
   if (!res.ok) return [];
   const data = await res.json();
-  return (data.comments || []).map((c) => ({ id: c.id, text: adfToText(c.body), authorId: c.author?.accountId, authorName: c.author?.displayName, authorType: c.author?.accountType, created: c.created }));
+  return (data.comments || []).map((c) => ({ id: c.id, text: adfToText(c.body), authorId: c.author?.accountId, authorName: c.author?.displayName, authorType: c.author?.accountType, created: c.created, restricted: !!c.visibility }));
 }
 
 export async function addComment(issueKey, text, as = 'app') {
@@ -82,4 +84,29 @@ export async function getUserName(accountId, as = 'app') {
   const res = await request(as, route`/rest/api/3/user?accountId=${accountId}`);
   if (!res.ok) return null;
   return (await res.json()).displayName || null;
+}
+
+// Keys of the projects the caller can browse. Used to keep decisions from projects they cannot see out of results.
+export async function visibleProjectKeys(as = 'user') {
+  const keys = new Set();
+  let startAt = 0;
+  for (let page = 0; page < 10; page += 1) {
+    const res = await request(as, route`/rest/api/3/project/search?startAt=${startAt}&maxResults=100`);
+    if (!res.ok) break;
+    const data = await res.json();
+    (data.values || []).forEach((p) => keys.add(p.key));
+    if (data.isLast || !(data.values || []).length) break;
+    startAt += data.values.length;
+  }
+  return keys;
+}
+
+export async function isJiraAdmin() {
+  try {
+    const res = await api.asUser().requestJira(route`/rest/api/3/mypermissions?permissions=ADMINISTER`, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return false;
+    return !!(await res.json()).permissions?.ADMINISTER?.havePermission;
+  } catch (e) {
+    return false;
+  }
 }

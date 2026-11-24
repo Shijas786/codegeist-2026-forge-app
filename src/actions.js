@@ -62,7 +62,7 @@ export async function recordDecision(payload, context) {
 export async function supersedeDecision(payload, context) {
   const id = String(payload.decisionId || '').toUpperCase();
   const existing = await store.getDecision(id);
-  if (!existing) return { error: `Decision ${id} does not exist.` };
+  if (!(await service.canSeeDecision(existing))) return { error: `Decision ${id} does not exist.` };
   if (payload.newStatement) {
     const res = await service.recordDecision({
       statement: payload.newStatement,

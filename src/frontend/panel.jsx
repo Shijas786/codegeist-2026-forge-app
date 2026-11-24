@@ -20,7 +20,7 @@ function Panel() {
     await load();
   };
   const record = async (values) => {
-    const res = await invoke('recordDecision', { ...values, candidateId: form?.candidateId, commentId: form?.commentId });
+    const res = await invoke('recordDecision', { ...values, candidateId: form?.candidateId });
     if (res.error) return setNotice(res.error);
     setForm(null);
     setNotice(`Recorded ${res.decision.id}. It will surface on related work from now on.`);
@@ -64,7 +64,7 @@ function Panel() {
 
       {form && (
         <Box xcss={cardStyle}>
-          <DecisionForm initial={form} onSubmit={record} onCancel={() => setForm(null)} />
+          <DecisionForm key={form.candidateId || form.supersedes || 'new'} initial={form} onSubmit={record} onCancel={() => setForm(null)} />
         </Box>
       )}
 

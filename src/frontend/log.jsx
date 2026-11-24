@@ -53,7 +53,7 @@ function Log() {
     await load();
   });
   const record = async (values) => {
-    const res = await invoke('recordDecision', { ...values, issueKey: form?.issueKey, commentId: form?.commentId, candidateId: form?.candidateId });
+    const res = await invoke('recordDecision', { ...values, candidateId: form?.candidateId });
     if (res.error) return setNotice(res.error);
     setForm(null);
     setNotice(`Recorded ${res.decision.id}.`);
@@ -109,7 +109,7 @@ function Log() {
 
       {form && (
         <Box xcss={cardStyle}>
-          <DecisionForm initial={form} onSubmit={record} onCancel={() => setForm(null)} />
+          <DecisionForm key={form.candidateId || form.supersedes || 'new'} initial={form} onSubmit={record} onCancel={() => setForm(null)} />
         </Box>
       )}
 
@@ -232,12 +232,13 @@ function Log() {
               <Box xcss={cardStyle}>
                 <Stack space="space.100">
                   <Heading as="h4">Capture</Heading>
+                  {settings && !settings.isAdmin && <Text size="small" color="color.text.subtlest">These apply to the whole site; a Jira administrator can change them.</Text>}
                   <Inline space="space.100" alignBlock="center">
-                    <Toggle id="auto" isChecked={!!settings?.autoCapture} onChange={async () => setSettings({ ...settings, ...(await invoke('settings', { patch: { autoCapture: !settings.autoCapture } })) })} />
+                    <Toggle id="auto" isDisabled={!settings?.isAdmin} isChecked={!!settings?.autoCapture} onChange={async () => setSettings({ ...settings, ...(await invoke('settings', { patch: { autoCapture: !settings.autoCapture } })) })} />
                     <Label labelFor="auto">Record comments that start with "DECISION:" automatically</Label>
                   </Inline>
                   <Inline space="space.100" alignBlock="center">
-                    <Toggle id="ack" isChecked={!!settings?.acknowledgeInComment} onChange={async () => setSettings({ ...settings, ...(await invoke('settings', { patch: { acknowledgeInComment: !settings.acknowledgeInComment } })) })} />
+                    <Toggle id="ack" isDisabled={!settings?.isAdmin} isChecked={!!settings?.acknowledgeInComment} onChange={async () => setSettings({ ...settings, ...(await invoke('settings', { patch: { acknowledgeInComment: !settings.acknowledgeInComment } })) })} />
                     <Label labelFor="ack">Reply on the issue when a decision is recorded</Label>
                   </Inline>
                 </Stack>

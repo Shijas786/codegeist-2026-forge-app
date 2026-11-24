@@ -49,3 +49,17 @@ test('adf to text and titles', () => {
   assert.equal(adfToText(adf).trim(), 'DECISION: use REST.');
   assert.equal(titleFromStatement('Use REST. It is simpler.'), 'Use REST');
 });
+
+test('multi-line markers keep the continuation and never take WHY as the statement', () => {
+  const d = parseExplicitDecision('DECISION: We will use Postgres for sessions\nand drop the Redis cluster.\nWHY: one fewer system\nto operate.\n\nunrelated');
+  assert.equal(d.statement, 'We will use Postgres for sessions and drop the Redis cluster.');
+  assert.equal(d.rationale, 'one fewer system to operate.');
+  assert.equal(parseExplicitDecision('DECISION:\nWHY: because it is cheaper overall'), null);
+});
+
+test('a contradiction is kept even when the limit is full', () => {
+  const filler = Array.from({ length: 6 }, (_, i) => ({ id: `F-${i}`, title: 'Cache sessions', statement: 'Cache user sessions in the checkout service aggressively', status: 'active', appliesTo: ['X-1'] }));
+  const ruling = { id: 'D-9', title: 'No Redis', statement: 'We will not use Redis anywhere.', status: 'active' };
+  const out = rankDecisions({ key: 'X-1', text: 'Add Redis to cache user sessions in the checkout service' }, [...filler, ruling], { limit: 3 });
+  assert.ok(out.some((r) => r.decision.id === 'D-9' && r.conflict));
+});
