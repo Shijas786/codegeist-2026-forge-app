@@ -1,0 +1,191 @@
+modules:
+  jira:issuePanel:
+    - key: precedent-issue-panel
+      resource: issue-panel
+      resolver:
+        function: resolver
+      render: native
+      title: Precedent
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  jira:projectPage:
+    - key: precedent-decision-log
+      resource: decision-log
+      resolver:
+        function: resolver
+      render: native
+      title: Decision log
+  trigger:
+    - key: precedent-comment-trigger
+      function: comment-trigger
+      events:
+        - avi:jira:commented:issue
+  rovo:agent:
+    - key: precedent-agent
+      name: Precedent
+      description: Knows what your team already decided, and why. Checks new work against past decisions before it ships.
+      prompt: resource:agent-resources;prompt.txt
+      conversationStarters:
+        - What have we decided that affects this issue?
+        - Does this proposal contradict an earlier decision?
+        - Record a decision from this discussion
+      actions:
+        - search-decisions
+        - get-decisions-for-issue
+        - check-proposal
+        - record-decision
+        - supersede-decision
+  rovo:mcp:
+    - key: precedent-mcp
+      name: Precedent decisions
+      tools:
+        - search-decisions
+        - get-decisions-for-issue
+        - check-proposal
+        - record-decision
+        - supersede-decision
+  action:
+    - key: search-decisions
+      name: Search decisions
+      function: search-decisions-fn
+      actionVerb: GET
+      description: Search the team's decision ledger by topic. Returns matching decisions with their rationale, status, source issue and who decided. Use before answering any question about what the team decided or why.
+      inputs:
+        query:
+          title: Query
+          type: string
+          required: true
+          description: Topic or keywords, for example "session storage" or "public API versioning"
+        projectKey:
+          title: Project key
+          type: string
+          required: false
+          description: Optional Jira project key to limit the search to
+        status:
+          title: Status
+          type: string
+          required: false
+          description: Optional filter, either "active" or "superseded"
+    - key: get-decisions-for-issue
+      name: Get decisions for issue
+      function: decisions-for-issue-fn
+      actionVerb: GET
+      description: List recorded decisions that bear on a Jira issue, why each is relevant, any contradiction between the issue and an active decision, and the goals, pull requests and deployments connected to the issue in Teamwork Graph.
+      inputs:
+        issueKey:
+          title: Issue key
+          type: string
+          required: false
+          description: Jira issue key such as PAY-12. Defaults to the issue the user is viewing.
+    - key: check-proposal
+      name: Check proposal against decisions
+      function: check-proposal-fn
+      actionVerb: GET
+      description: Check a proposed change, plan or piece of code against the decision ledger before work starts. Returns a verdict (contradicts, related, or no prior decision) with the decisions involved. Coding agents should call this before implementing an architectural or dependency choice.
+      inputs:
+        proposal:
+          title: Proposal
+          type: string
+          required: true
+          description: Plain description of what is about to be built or changed
+        projectKey:
+          title: Project key
+          type: string
+          required: false
+          description: Optional Jira project key to scope the check
+    - key: record-decision
+      name: Record decision
+      function: record-decision-fn
+      actionVerb: CREATE
+      description: Record a new team decision in the ledger so it surfaces on related work. Confirm the wording with the user first.
+      inputs:
+        statement:
+          title: Statement
+          type: string
+          required: true
+          description: The decision in one or two sentences, stated as what the team will or will not do
+        rationale:
+          title: Rationale
+          type: string
+          required: false
+          description: Why the team decided this
+        title:
+          title: Title
+          type: string
+          required: false
+          description: Short title, under 90 characters
+        issueKey:
+          title: Issue key
+          type: string
+          required: false
+          description: Jira issue where the decision was made. Defaults to the issue the user is viewing.
+        projectKey:
+          title: Project key
+          type: string
+          required: false
+          description: Jira project the decision belongs to when there is no issue
+        supersedes:
+          title: Supersedes
+          type: string
+          required: false
+          description: Id of an earlier decision this one replaces, such as D-4
+    - key: supersede-decision
+      name: Supersede decision
+      function: supersede-decision-fn
+      actionVerb: UPDATE
+      description: Mark a decision as superseded, optionally replacing it with a new statement. Confirm with the user first.
+      inputs:
+        decisionId:
+          title: Decision id
+          type: string
+          required: true
+          description: Id of the decision to supersede, such as D-4
+        newStatement:
+          title: New statement
+          type: string
+          required: false
+          description: The decision that replaces it, if any
+        rationale:
+          title: Rationale
+          type: string
+          required: false
+          description: Why the earlier decision no longer holds
+  function:
+    - key: resolver
+      handler: index.handler
+    - key: comment-trigger
+      handler: index.onComment
+    - key: search-decisions-fn
+      handler: index.searchDecisions
+    - key: decisions-for-issue-fn
+      handler: index.getDecisionsForIssue
+    - key: check-proposal-fn
+      handler: index.checkProposal
+    - key: record-decision-fn
+      handler: index.recordDecision
+    - key: supersede-decision-fn
+      handler: index.supersedeDecision
+resources:
+  - key: issue-panel
+    path: src/frontend/panel.jsx
+  - key: decision-log
+    path: src/frontend/log.jsx
+  - key: agent-resources
+    path: resources/agent
+permissions:
+  scopes:
+    - read:jira-work
+    - write:jira-work
+    - read:jira-user
+    - storage:app
+    - read:graph:issue:jira
+    - read:graph:issue-comment:jira
+    - read:graph:project:jira
+    - read:graph:team:atlassian
+    - read:graph:goal:atlassian
+    - read:graph:user:atlassian
+app:
+  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
+  runtime:
+    name: nodejs22.x
+  rovo:
+    description: Precedent keeps a ledger of team decisions and checks new work against it.
