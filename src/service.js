@@ -135,6 +135,31 @@ export async function handleComment({ issueKey, commentId }) {
   return { skipped: true };
 }
 
+// Called when an issue is created or edited: posts one comment per active decision the issue now contradicts.
+// Only decisions from the issue's own project (or no project) are quoted, so nothing leaks across projects.
+export async function guardIssue(issueKey) {
+  if (!(await store.getSettings()).warnOnConflict) return { skipped: true };
+  const res = await decisionsForIssue(issueKey, { as: 'app', withGraph: false });
+  if (res.error) return { skipped: true };
+  const warned = new Set(await store.warnedOn(res.issue.key));
+  const fresh = res.matches.filter(
+    (m) => m.conflict && !warned.has(m.decision.id) && (!m.decision.projectKey || m.decision.projectKey === res.issue.projectKey)
+  );
+  if (!fresh.length) return { skipped: true };
+  const lines = fresh.map((m) => {
+    const d = m.decision;
+    const by = [d.decidedByName, d.decidedAt && String(d.decidedAt).slice(0, 10), d.sourceIssueKey && `on ${d.sourceIssueKey}`].filter(Boolean).join(', ');
+    return `- ${d.id} "${truncate(d.title, 100)}"${by ? ` (${by})` : ''}: ${m.conflict.reason}`;
+  });
+  await jira.addComment(
+    res.issue.key,
+    `Precedent: this work may contradict ${fresh.length === 1 ? 'a decision' : `${fresh.length} decisions`} your team already made.\n${lines.join('\n')}\nIf the decision no longer holds, supersede it in the Precedent panel so the ledger stays true.`,
+    'app'
+  );
+  await store.markWarned(res.issue.key, fresh.map((m) => m.decision.id));
+  return { warned: fresh.map((m) => m.decision.id) };
+}
+
 // Walk the project's recent work through Teamwork Graph and queue decision-sounding comments nobody recorded.
 export async function scanProject({ cloudId, projectKey, projectId, since = 'P30D' }) {
   const recorded = new Set((await store.listDecisions()).map((d) => `${d.sourceIssueKey}:${d.sourceCommentId}`));

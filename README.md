@@ -10,6 +10,7 @@ Teams make decisions in Jira comments, then lose them. Six months later someone 
 | --- | --- |
 | **Jira issue panel** | The decisions that bear on this issue, ranked, each with the reason it matched. A red contradiction card when the issue adopts something an active decision ruled out. One-click recording. |
 | **Jira comments** | Start a comment with `DECISION:` (and optionally `WHY:`) and it is recorded automatically. Comments that only *sound* like a decision ("we agreed to go with...") are queued for review. |
+| **Live guard** | When an issue is created or edited and adopts something an active decision in its project ruled out, Precedent comments on it once, naming the decision, who made it and where. Admins can turn this off. |
 | **Project page: Decision log** | The ledger, search, a drift view of open work contradicting decisions, a review queue of unrecorded decisions, and a "check a plan" box. |
 | **Rovo agent** | "What have we decided that affects this issue?", "Does this plan contradict anything?", "Record this as a decision." |
 | **MCP tools** | The same five actions exposed through the Atlassian Rovo MCP server, so Claude Code, Cursor and other coding agents check the ledger before they write code. A ready-made agent skill is in `skills/precedent/SKILL.md`. |
