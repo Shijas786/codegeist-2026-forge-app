@@ -19,6 +19,7 @@ export function summarize(d) {
     sourceIssue: d.sourceIssueKey,
     decidedBy: d.decidedByName,
     decidedAt: d.decidedAt,
+    recordedBy: d.recordedByName || undefined,
     supersededBy: d.supersededBy,
     tags: d.tags,
     components: d.components,
@@ -60,6 +61,7 @@ export async function recordDecision(input, as = 'user') {
     decidedBy: input.decidedBy,
     decidedByName,
     capturedVia: input.capturedVia,
+    recordedByName: input.recordedByName,
     decidedAt: input.decidedAt,
     supersedes,
   });

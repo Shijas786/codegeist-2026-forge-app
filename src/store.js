@@ -63,6 +63,7 @@ export async function createDecision(input) {
     decidedBy: input.decidedBy || null,
     decidedByName: input.decidedByName || null,
     capturedVia: input.capturedVia || 'panel',
+    recordedByName: input.recordedByName || null,
     decidedAt: input.decidedAt || now,
     createdAt: now,
     updatedAt: now,

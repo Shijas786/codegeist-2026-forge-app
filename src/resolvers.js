@@ -38,6 +38,8 @@ resolver.define('recordDecision', async (req) => {
       decidedByName: candidate.authorName,
       decidedAt: candidate.created || undefined,
       capturedVia: 'review',
+      // The reviewer may have reworded the comment, so the record names them too.
+      recordedByName: await who(req),
     });
   } else {
     Object.assign(input, {

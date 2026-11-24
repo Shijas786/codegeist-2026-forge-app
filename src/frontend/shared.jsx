@@ -40,7 +40,7 @@ export function DecisionCard({ decision: d, score, reasons, conflict, actions })
         <Text>{d.statement}</Text>
         {d.rationale ? <Text color="color.text.subtle">{`Why: ${d.rationale}`}</Text> : null}
         <Text size="small" color="color.text.subtlest">
-          {[d.decidedByName && `Decided by ${d.decidedByName}`, day(d.decidedAt), d.sourceIssueKey && `on ${d.sourceIssueKey}`, d.supersededBy && `superseded by ${d.supersededBy}`]
+          {[d.decidedByName && `Decided by ${d.decidedByName}`, day(d.decidedAt), d.recordedByName && d.recordedByName !== d.decidedByName && `recorded by ${d.recordedByName}`, d.sourceIssueKey && `on ${d.sourceIssueKey}`, d.supersededBy && `superseded by ${d.supersededBy}`]
             .filter(Boolean)
             .join(' · ')}
         </Text>
