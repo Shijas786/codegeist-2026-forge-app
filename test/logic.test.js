@@ -63,3 +63,9 @@ test('a contradiction is kept even when the limit is full', () => {
   const out = rankDecisions({ key: 'X-1', text: 'Add Redis to cache user sessions in the checkout service' }, [...filler, ruling], { limit: 3 });
   assert.ok(out.some((r) => r.decision.id === 'D-9' && r.conflict));
 });
+
+test('a statement that starts with an ADR reference is kept', () => {
+  const d = parseExplicitDecision('DECISION: ADR-123 stands, we keep Postgres for sessions\nWHY: it works');
+  assert.equal(d.statement, 'ADR-123 stands, we keep Postgres for sessions');
+  assert.equal(parseExplicitDecision('ADR-123 is worth a read before the meeting'), null);
+});
