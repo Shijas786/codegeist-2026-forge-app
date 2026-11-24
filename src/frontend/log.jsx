@@ -244,6 +244,10 @@ function Log() {
                     <Toggle id="ack" isDisabled={!settings?.isAdmin} isChecked={!!settings?.acknowledgeInComment} onChange={async () => setSettings({ ...settings, ...(await invoke('settings', { patch: { acknowledgeInComment: !settings.acknowledgeInComment } })) })} />
                     <Label labelFor="ack">Reply on the issue when a decision is recorded</Label>
                   </Inline>
+                  <Inline space="space.100" alignBlock="center">
+                    <Toggle id="warn" isDisabled={!settings?.isAdmin} isChecked={!!settings?.warnOnConflict} onChange={async () => setSettings({ ...settings, ...(await invoke('settings', { patch: { warnOnConflict: !settings.warnOnConflict } })) })} />
+                    <Label labelFor="warn">Comment on new or edited work that contradicts a decision</Label>
+                  </Inline>
                 </Stack>
               </Box>
               <Box xcss={cardStyle}>

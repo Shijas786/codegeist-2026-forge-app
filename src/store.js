@@ -116,11 +116,20 @@ export async function dismissCandidate(id) {
 }
 
 export async function getSettings() {
-  return { acknowledgeInComment: true, autoCapture: true, ...((await kvs.get('meta:settings')) || {}) };
+  return { acknowledgeInComment: true, autoCapture: true, warnOnConflict: true, ...((await kvs.get('meta:settings')) || {}) };
 }
 
 export async function saveSettings(patch) {
   const next = { ...(await getSettings()), ...patch };
   await kvs.set('meta:settings', next);
   return next;
+}
+
+// Decision ids already flagged on an issue, so each contradiction is posted once.
+export async function warnedOn(issueKey) {
+  return (await kvs.get(`warned:${issueKey}`)) || [];
+}
+
+export async function markWarned(issueKey, ids) {
+  await kvs.set(`warned:${issueKey}`, [...new Set([...(await warnedOn(issueKey)), ...ids])]);
 }

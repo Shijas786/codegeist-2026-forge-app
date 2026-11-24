@@ -107,10 +107,11 @@ resolver.define('settings', async (req) => {
   if (req.payload?.patch) {
     // Settings apply to the whole site, so only Jira administrators change them.
     if (!isAdmin) return { ...(await store.getSettings()), isAdmin, error: 'Only Jira administrators can change these settings.' };
-    const { autoCapture, acknowledgeInComment } = req.payload.patch;
+    const { autoCapture, acknowledgeInComment, warnOnConflict } = req.payload.patch;
     const patch = {};
     if (typeof autoCapture === 'boolean') patch.autoCapture = autoCapture;
     if (typeof acknowledgeInComment === 'boolean') patch.acknowledgeInComment = acknowledgeInComment;
+    if (typeof warnOnConflict === 'boolean') patch.warnOnConflict = warnOnConflict;
     return { ...(await store.saveSettings(patch)), isAdmin };
   }
   return { ...(await store.getSettings()), isAdmin, graphConnected: await graph.ping() };

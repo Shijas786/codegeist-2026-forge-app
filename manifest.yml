@@ -19,6 +19,11 @@ modules:
       function: comment-trigger
       events:
         - avi:jira:commented:issue
+    - key: precedent-issue-guard
+      function: issue-guard
+      events:
+        - avi:jira:created:issue
+        - avi:jira:updated:issue
   rovo:agent:
     - key: precedent-agent
       name: Precedent
@@ -154,6 +159,8 @@ modules:
       handler: index.handler
     - key: comment-trigger
       handler: index.onComment
+    - key: issue-guard
+      handler: index.onIssueChange
     - key: search-decisions-fn
       handler: index.searchDecisions
     - key: decisions-for-issue-fn
